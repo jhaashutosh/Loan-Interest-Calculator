@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Loan Comparison Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+    }
+    h1 { color: #333; }
+    .input-box {
+      margin-bottom: 15px;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover { background: #0056b3; }
+    .results-section {
+      margin-top: 30px;
+    }
+    .rate-section {
+      margin-bottom: 40px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th { background: #f1f1f1; }
+    .rate-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>Loan Comparison Tool</h1>
+
+  <div class="input-box">
+    <label>Loan Amounts (comma separated, e.g. 10L, 12, 1500000)</label>
+    <textarea id="loanAmounts" rows="2"></textarea>
+  </div>
+
+  <div class="input-box">
+    <label>Tenures in Years (comma separated, e.g. 3,5,7,10)</label>
+    <textarea id="tenures" rows="2"></textarea>
+  </div>
+
+  <div class="input-box">
+    <label>Interest Rates % (comma separated, e.g. 7.35, 8, 8.5, 9)</label>
+    <textarea id="rates" rows="2"></textarea>
+  </div>
+
+  <button onclick="calculateLoans()">Calculate</button>
+
+  <div class="results-section" id="results"></div>
+
+  <script>
+    function parseAmount(value) {
+      value = value.trim().toUpperCase();
+      if (value.endsWith('L')) return parseFloat(value) * 100000;
+      if (value.endsWith('CR')) return parseFloat(value) * 10000000;
+      return parseFloat(value);
+    }
+
+    function calculateEMI(principal, annualRate, years) {
+      let monthlyRate = (annualRate / 100) / 12;
+      let n = years * 12;
+      if (monthlyRate === 0) return principal / n;
+      return (principal * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1);
+    }
+
+    function formatNumber(num) {
+      return num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
+
+    function calculateLoans() {
+      let loanAmounts = document.getElementById('loanAmounts').value.split(/,|\n|\s+/).map(parseAmount).filter(v => !isNaN(v));
+      let tenures = document.getElementById('tenures').value.split(/,|\n|\s+/).map(Number).filter(v => v > 0);
+      let rates = document.getElementById('rates').value.split(/,|\n|\s+/).map(Number).filter(v => v > 0);
+
+      let resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+
+      rates.forEach(rate => {
+        let rateSection = document.createElement('div');
+        rateSection.className = 'rate-section';
+        
+        let title = document.createElement('div');
+        title.className = 'rate-title';
+        title.innerText = `Interest Rate: ${rate}%`;
+        rateSection.appendChild(title);
+
+        let table = document.createElement('table');
+        let thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th>Loan Amount</th><th>Tenure (Years)</th><th>EMI</th><th>Total Payment</th><th>Total Interest</th></tr>';
+        table.appendChild(thead);
+
+        let tbody = document.createElement('tbody');
+
+        let rows = [];
+        loanAmounts.forEach(amount => {
+          tenures.forEach(years => {
+            let emi = calculateEMI(amount, rate, years);
+            let totalPayment = emi * years * 12;
+            let totalInterest = totalPayment - amount;
+            rows.push({ amount, years, emi, totalPayment, totalInterest });
+          });
+        });
+
+        // Sort rows by amount then tenure
+        rows.sort((a, b) => a.amount - b.amount || a.years - b.years);
+
+        rows.forEach(r => {
+          let tr = document.createElement('tr');
+          tr.innerHTML = `<td>₹${formatNumber(r.amount)}</td><td>${r.years}</td><td>₹${formatNumber(r.emi)}</td><td>₹${formatNumber(r.totalPayment)}</td><td>₹${formatNumber(r.totalInterest)}</td>`;
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        rateSection.appendChild(table);
+        resultsDiv.appendChild(rateSection);
+      });
+    }
+  </script>
+</body>
+</html>
